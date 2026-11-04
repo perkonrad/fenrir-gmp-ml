@@ -1,4 +1,7 @@
-# GMP-DPD with a machine-learning variant
+# fenrir-gmp-ml: GMP-DPD with a machine-learning variant
+
+**Documentation:** [overview](docs/index.md) · [theory](docs/theory.md) · [tutorial](docs/tutorial.md) ·
+[results](docs/results.md) · [API](docs/api.md) · [hardware notes](docs/hardware.md)
 
 Pure NumPy/SciPy (no deep-learning framework; backprop is hand-written and gradient-checked),
 so every operation maps directly onto something you could put in fixed-point RTL.
@@ -79,6 +82,9 @@ dpd/nn.py          MLP, complex Adam, equivariant features, NN surrogate, GMP+NN
 run_demo.py        end-to-end benchmark (python run_demo.py [--pa rapp] [--rms 0.3] [--snr 50] [--quick])
 plot_results.py    figure from results/
 tests/test_gradcheck.py   finite-difference check of all hand-written gradients
+examples/tutorial.py      step-by-step guided run (see docs/tutorial.md)
+examples/drive_sweep.py   no-DPD vs GMP-ILA over drive level, both PA models
+docs/                     full documentation
 results/           results.json, waveforms.npz, dpd_params.npz (GMP coeffs + NN weights/feature scaling)
 ```
 
