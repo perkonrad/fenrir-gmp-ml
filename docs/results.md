@@ -1,5 +1,7 @@
 # Results
 
+Results for the 20 MHz Wi-Fi signal are on a separate page: [20 MHz Wi-Fi](wifi20.md).
+
 All numbers are simulated. The PA is the behavioural model in `dpd/pa.py`, not hardware.
 Identification uses captures with 50 dB SNR receiver noise. Scoring uses the clean PA output on an
 independent test waveform through the true PA model, never the surrogate.
@@ -19,7 +21,7 @@ independent test waveform through the true PA model, never the surrogate.
 | NN residual | 28 → 24 → 24 → 2, tanh, 1,346 parameters |
 | Surrogate | FIR(6) + 24 → 64 → 64 → 2, tanh |
 | Schedule | surrogate 8,000 it; DLA round 1: GMP 2,500 / NN 5,000 it; rounds 2–3: surrogate 4,000, GMP 1,500, NN 3,000 it |
-| Command | `python run_demo.py` (seed 7), 870 s on 2 CPU cores |
+| Command | `python run_demo.py` (seed 7), 870 s on 2 CPU cores. LPF features as 320-tap FIR truncations (`--lpf-len auto` selects this for `lte12`, so the command still reproduces these numbers) |
 
 ## Main result
 

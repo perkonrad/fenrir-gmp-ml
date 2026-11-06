@@ -169,3 +169,8 @@ To apply it to a new signal in Python, use the object directly: `z = dpd_nn(x_ne
 5. **Smaller network.** Try `hidden=(12, 12)` to explore the complexity/performance trade-off.
 6. **Lower-order GMP.** Try `GMP(Ka=5, La=2, Kb=3, Lb=2, Mb=1, Kc=3, Lc=2, Mc=1)`; the NN residual can
    compensate for part of the reduced polynomial.
+7. **Wi-Fi.** Replace step 1 with `from dpd.signals import wifi20; sig = wifi20("he")` and
+   `sig.generate(n, rng, papr_db=None)`, use `PA("doherty", tau=80 * sig.fs / 61.44e6)` and `RMS = 0.27`,
+   and score with `sig.mask_margin(y)` and `sig.evm_db(sig.evm(y, ref_te))`. Scale the LPF time constants
+   by `sig.fs / 61.44e6` too (`lpf_taus=` on `Surrogate` and `GMPNNDPD`). `run_demo.py --signal wifi20` does all of this.
+   For the IIR features, also pass a longer warm-up to `train_dla` (`pre` ≈ 5× the slowest τ).

@@ -1,7 +1,7 @@
 # fenrir-gmp-ml: GMP-DPD with a machine-learning variant
 
 **Documentation:** [overview](docs/index.md) · [theory](docs/theory.md) · [tutorial](docs/tutorial.md) ·
-[results](docs/results.md) · [API](docs/api.md) · [hardware notes](docs/hardware.md)
+[results](docs/results.md) · [20 MHz Wi-Fi](docs/wifi20.md) · [API](docs/api.md) · [hardware notes](docs/hardware.md)
 
 Pure NumPy/SciPy (no deep-learning framework; backprop is hand-written and gradient-checked),
 so every operation maps directly onto something you could put in fixed-point RTL.
@@ -72,6 +72,20 @@ Complexity per sample (rough real-op counts, see `complexity()` methods):
 | GMP (ILA or DLA) | 99 complex | ~600 | 0 |
 | GMP+NN | 99 complex + 1,346 NN weights | ~1,900 | 48 |
 
+## 20 MHz Wi-Fi (802.11ax HE20)
+
+`python run_demo.py --signal wifi20`: 242 tones, 1024-QAM, no CFR (PAPR ≈ 11 dB), DPD at 120 MS/s, rms 0.27.
+Full write-up: [docs/wifi20.md](docs/wifi20.md).
+
+| | NMSE (dB) | ACLR worst (dBc) | EVM (dB, req. −35) | Mask margin (dB) |
+|---|---:|---:|---:|---:|
+| No DPD | −18.8 | −28.0 | −22.5 | −2.0 (fail) |
+| GMP-ILA | −39.6 | −44.7 | −45.1 | +7.6 |
+| GMP-DLA | −39.8 | −44.8 | −44.5 | +7.2 |
+| **GMP+NN-DLA** | **−50.5** | **−56.9** | **−57.7** | **+17.4** |
+
+![wifi results](results_wifi20/dpd_results.png)
+
 ## Files
 
 ```
@@ -79,12 +93,13 @@ dpd/signals.py     OFDM + CFR, NMSE / ACPR / EVM
 dpd/pa.py          Rapp and Doherty Wiener-Hammerstein PA with thermal memory
 dpd/gmp.py         GMP basis, ridge LS, ILA loop
 dpd/nn.py          MLP, complex Adam, equivariant features, NN surrogate, GMP+NN DPD + DLA trainer
-run_demo.py        end-to-end benchmark (python run_demo.py [--pa rapp] [--rms 0.3] [--snr 50] [--quick])
+run_demo.py        end-to-end benchmark (python run_demo.py [--signal wifi20] [--pa rapp] [--rms R] [--snr 50] [--quick])
 plot_results.py    figure from results/
 tests/test_gradcheck.py   finite-difference check of all hand-written gradients
 examples/tutorial.py      step-by-step guided run (see docs/tutorial.md)
 examples/drive_sweep.py   no-DPD vs GMP-ILA over drive level, both PA models
 docs/                     full documentation
+results_wifi20/    same, for the 802.11ax HE20 benchmark
 results/           results.json, waveforms.npz, dpd_params.npz (GMP coeffs + NN weights/feature scaling)
 ```
 

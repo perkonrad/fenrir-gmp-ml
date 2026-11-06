@@ -76,7 +76,7 @@ z[n] = Σ_q c_q φ_q(x)[n]   +   x[n] · w( F(x)[n] )
 |---|---|---|
 | `|x[n−m]|`, `|x[n−m]|²` | m = −2 … 4 | envelope history (with 2-sample look-ahead) |
 | `Re/Im{ x[n−m] · x*[n] }` | m ∈ {−2, −1, 1, 2, 3, 4} | phase of neighbours *relative to* x[n] |
-| `LPF_τ{|x|²}[n]` | τ = 30, 150 samples | slow envelope power, for thermal/trapping memory |
+| `LPF_τ{|x|²}[n]` | τ = 30, 150 samples at 61.44 MS/s (0.49, 2.44 µs; scaled with fs) | slow envelope power, for thermal/trapping memory |
 
 That is 28 features. Each is standardised with a fixed mean and scale computed once on the training waveform.
 
@@ -181,6 +181,9 @@ about 1e−7 and 1e−8.
 | NMSE | `10 log10( Σ|y − x|² / Σ|x|² )` with the fixed target gain (no best-fit gain or delay) |
 | ACPR | Welch PSD (Blackman-Harris, 4096 bins). Measurement BW = occupied 12 MHz; adjacent channels centred at ±13.2 MHz (10 % guard). Worst side reported. |
 | EVM | Per-subcarrier RMS error after a single complex-gain LS fit, against the subcarrier values the transmitted (CFR'd, filtered) signal actually carries |
+
+For Wi-Fi, ACLR is measured at ±20 MHz, EVM uses per-subcarrier equalisation, and the 802.11 spectral
+mask margin is added; see [20 MHz Wi-Fi](wifi20.md#metrics).
 
 All metrics use the *clean* PA output on the *test* waveform. The 50 dB noise is only in the
 captures used for identification.

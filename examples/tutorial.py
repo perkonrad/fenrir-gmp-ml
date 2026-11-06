@@ -45,14 +45,14 @@ report("GMP-ILA", gmp.basis(x_te) @ c_ila)
 z_ila = gmp.basis(x_tr) @ c_ila
 caps_z = [x_tr, 1.15 * x_tr, z_ila]            # drive the PA over the range the DPD will use
 caps_y = [measure(z) for z in caps_z]
-sur = Surrogate(np.random.default_rng(1))
+sur = Surrogate(np.random.default_rng(1), lpf_len=320)   # FIR form, as in the docs' output
 sur.fit(caps_z, caps_y, rng, iters=4000)
 z_chk = gmp.basis(x_te) @ c_ila
 print(f"[4] surrogate NMSE vs true PA on test drive: {nmse_db(sur(z_chk), pa(z_chk)):.1f} dB")
 
 # ---------------------------------------------------------------- 5. direct learning
-dpd_gmp = GMPNNDPD(gmp, c_ila, x_tr, np.random.default_rng(2), use_nn=False)
-dpd_nn = GMPNNDPD(gmp, c_ila, x_tr, np.random.default_rng(3), use_nn=True)
+dpd_gmp = GMPNNDPD(gmp, c_ila, x_tr, np.random.default_rng(2), use_nn=False, lpf_len=320)
+dpd_nn = GMPNNDPD(gmp, c_ila, x_tr, np.random.default_rng(3), use_nn=True, lpf_len=320)
 dpd_gmp.train_dla(sur, x_tr, iters=1200, rng=rng)
 dpd_nn.train_dla(sur, x_tr, iters=2500, rng=rng)
 print("[5] direct learning, round 1")

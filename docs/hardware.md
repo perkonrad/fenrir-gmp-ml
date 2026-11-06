@@ -48,7 +48,11 @@ accumulation, plus basis generation, before any resource sharing or reduced prec
 
 ## LPF features: match the trained kernel
 
-`Feat` uses a **320-tap truncation** of the 1-pole impulse response `(1−a)·aⁿ` with `a = e^{−1/τ}`.
+Since the Wi-Fi update, `Feat` defaults to an **exact one-pole IIR** (`lpf_len=None`). That is what
+the 20 MHz Wi-Fi results use, and it maps directly onto a hardware one-pole with nothing more to do. The rest of this
+section applies to the committed **12 MHz** results, which were trained with the older FIR form.
+
+The 12 MHz model uses a **320-tap truncation** of the 1-pole impulse response `(1−a)·aⁿ` with `a = e^{−1/τ}`.
 For τ = 30 the truncated tail is negligible. For τ = 150 it is about 12 % (`e^{−320/150}`), so a plain
 one-pole IIR does **not** match what the network was trained on. Options:
 

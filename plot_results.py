@@ -39,7 +39,7 @@ xl = 30 if not wifi else 50
 if wifi:
     fm = np.linspace(-xl, xl, 2001) * 1e6
     a.plot(fm / 1e6, sig.mask_limit(fm), color=INK, lw=1.0, ls="--", label="802.11 20 MHz mask")
-a.set(xlim=(-xl, xl), ylim=(-90, 5), xlabel="Frequency (MHz)",
+a.set(xlim=(-xl, xl), ylim=(-90 if not wifi else -118, 5), xlabel="Frequency (MHz)",
       ylabel="PSD (dBr)" if wifi else "PSD (dB, normalised)",
       title="PA output spectrum (shaded = adjacent channels)")
 a.legend(loc="lower center", fontsize=8)
