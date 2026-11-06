@@ -1,15 +1,18 @@
-"""Plots for run_demo.py output (light theme): PSD, AM/AM, AM/PM, DLA training curves."""
+"""Plots for run_demo.py output (light theme): PSD (+ 802.11 mask for Wi-Fi), AM/AM, AM/PM,
+DLA training curves.   python plot_results.py [results_dir]"""
 import json, sys
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from dpd import OFDM
+from dpd.signals import make_signal
 
 out = sys.argv[1] if len(sys.argv) > 1 else "results"
 R = json.load(open(f"{out}/results.json"))
 W = np.load(f"{out}/waveforms.npz")
-sig = OFDM()
+C = R["config"]
+sig = make_signal(C.get("signal", "lte12"), C.get("wifi_mode", "he"), C.get("osr", 6))
+wifi = sig.mask is not None
 x = W["x"]
 
 SURF, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
@@ -26,11 +29,18 @@ for k in COL:
     y = W["y_" + k.replace("+", "p")]
     f, P = sig.psd(y)
     r = R["results"][k]
-    a.plot(f / 1e6, 10 * np.log10(P / P.max()), color=COL[k], lw=1.4 if k != "No DPD" else 1.2,
-           label=f"{k}  (ACPR {r['acpr']:.1f} dBc)")
+    ref = P[np.abs(f) <= sig.bw / 2].max()
+    lab = f"{k}  (ACPR {r['acpr']:.1f} dBc" + (f", mask {r['mask_margin']:+.1f} dB)" if wifi else ")")
+    a.plot(f / 1e6, 10 * np.log10(P / ref), color=COL[k], lw=1.4 if k != "No DPD" else 1.2, label=lab)
+off = sig.adj_offset
 for s in (-1, 1):
-    a.axvspan(s * 1.1 * sig.bw / 1e6 - sig.bw / 2e6, s * 1.1 * sig.bw / 1e6 + sig.bw / 2e6, color="#f0efec", zorder=0)
-a.set(xlim=(-30, 30), ylim=(-90, 3), xlabel="Frequency (MHz)", ylabel="PSD (dB, normalised)",
+    a.axvspan((s * off - sig.bw / 2) / 1e6, (s * off + sig.bw / 2) / 1e6, color="#f0efec", zorder=0)
+xl = 30 if not wifi else 50
+if wifi:
+    fm = np.linspace(-xl, xl, 2001) * 1e6
+    a.plot(fm / 1e6, sig.mask_limit(fm), color=INK, lw=1.0, ls="--", label="802.11 20 MHz mask")
+a.set(xlim=(-xl, xl), ylim=(-90, 5), xlabel="Frequency (MHz)",
+      ylabel="PSD (dBr)" if wifi else "PSD (dB, normalised)",
       title="PA output spectrum (shaded = adjacent channels)")
 a.legend(loc="lower center", fontsize=8)
 
@@ -58,8 +68,10 @@ a.axhline(R["results"]["GMP-ILA"]["nmse"], color=COL["GMP-ILA"], lw=1, ls="--", 
 a.set(xlabel="DLA iteration (all rounds)", ylabel="NMSE via surrogate (dB)", title="Direct-learning convergence")
 a.legend()
 
-fig.suptitle(f"GMP vs ML-augmented GMP DPD — {R['config']['pa']} PA, {sig.bw/1e6:.0f} MHz OFDM 64-QAM, "
-             f"{R['config']['snr']:.0f} dB capture SNR", fontsize=11, color=INK)
+desc = (f"802.11 {C.get('wifi_mode', 'he').upper()} 20 MHz, {sig.qam}-QAM, {sig.fs/1e6:.0f} MS/s" if wifi
+        else f"{sig.bw/1e6:.0f} MHz OFDM {sig.qam}-QAM")
+fig.suptitle(f"GMP vs ML-augmented GMP DPD — {C['pa']} PA, {desc}, rms {C['rms']:.2f}, "
+             f"{C['snr']:.0f} dB capture SNR", fontsize=11, color=INK)
 fig.tight_layout()
 fig.savefig(f"{out}/dpd_results.png", dpi=150)
 print("saved", f"{out}/dpd_results.png")

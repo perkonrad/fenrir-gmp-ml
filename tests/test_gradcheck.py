@@ -10,12 +10,13 @@ def loss_and_grad(sur, z, t):
     return np.sum(np.abs(e) ** 2), sur.backward(2 * e)
 
 
-def main():
+def main(lpf_len=None):
+    print(f'--- LPF features: {"exact one-pole IIR" if lpf_len is None else f"{lpf_len}-tap FIR"}')
     rng = np.random.default_rng(0)
     N = 700
     z = 0.4 * (rng.standard_normal(N) + 1j * rng.standard_normal(N))
     t = 0.4 * (rng.standard_normal(N) + 1j * rng.standard_normal(N))
-    sur = Surrogate(rng, hidden=(16, 16))
+    sur = Surrogate(rng, hidden=(16, 16), lpf_len=lpf_len)
     sur.feat.fit_scale(z)
     sur.h = rng.standard_normal(sur.L + 1) * 0.3 + 0j
     sur.mlp = type(sur.mlp)([sur.feat.D, 16, 16, 2], rng, out_scale=1.0)
@@ -36,7 +37,7 @@ def main():
     x = 0.3 * (rng.standard_normal(N) + 1j * rng.standard_normal(N))
     gmp = GMP(Ka=3, La=1, Kb=2, Lb=1, Mb=1, Kc=2, Lc=1, Mc=1)
     c0 = np.zeros(gmp.P, complex); c0[0] = 1
-    dpd = GMPNNDPD(gmp, c0, x, rng, hidden=(8, 8))
+    dpd = GMPNNDPD(gmp, c0, x, rng, hidden=(8, 8), lpf_len=lpf_len)
     dpd.mlp = type(dpd.mlp)([dpd.feat.D, 8, 8, 2], rng, out_scale=1.0)
 
     def L(dpd):
@@ -63,4 +64,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(None)
+    main(320)

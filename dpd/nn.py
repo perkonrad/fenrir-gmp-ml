@@ -8,7 +8,7 @@ so that for y = a*w:  g_a = g_y*conj(w),  g_w = g_y*conj(a).
 """
 import numpy as np
 from scipy.linalg import qr, solve_triangular
-from scipy.signal import fftconvolve
+from scipy.signal import fftconvolve, lfilter
 
 from .gmp import shift
 
@@ -88,15 +88,30 @@ class Feat:
         |z[n-m]|, |z[n-m]|^2                      m in amp_delays
         Re/Im{ z[n-m] conj(z[n]) }                m in prod_delays   (relative phase)
         LPF_tau{|z|^2}[n]                         tau in lpf_taus    (long-term memory)
+    LPF is an exact one-pole IIR  s[n] = a s[n-1] + (1-a) q[n],  a = exp(-1/tau)  (lpf_len=None,
+    default; matches a hardware one-pole), or its lpf_len-tap FIR truncation (lpf_len=int).
     Rotating z by a constant phase leaves every feature unchanged, so a network that
     outputs a complex gain w applied as z[n]*w is exactly phase-equivariant."""
 
-    def __init__(self, amp_delays, prod_delays, lpf_taus=(), lpf_len=320, eps=1e-6):
+    def __init__(self, amp_delays, prod_delays, lpf_taus=(), lpf_len=None, eps=1e-6):
         self.amp, self.prod, self.eps = list(amp_delays), list(prod_delays), eps
-        n = np.arange(lpf_len)
-        self.kern = [(1 - np.exp(-1 / t)) * np.exp(-n / t) for t in lpf_taus]
+        self.lpf_len, self.taus = lpf_len, list(lpf_taus)
+        if lpf_len is None:
+            self.kern = [np.exp(-1.0 / t) for t in lpf_taus]                  # IIR pole a
+        else:
+            n = np.arange(lpf_len)
+            self.kern = [(1 - np.exp(-1 / t)) * np.exp(-n / t) for t in lpf_taus]
         self.scale = None
         self.D = 2 * len(self.amp) + 2 * len(self.prod) + len(self.kern)
+
+    def _lpf(self, k, q):
+        if self.lpf_len is None:
+            return lfilter([1 - k], [1, -k], q)
+        return fftconvolve(q, k)[: len(q)]
+
+    def _lpf_adj(self, k, g):
+        # adjoint of a causal LTI filter (zero initial state) = time-reversed filtering
+        return self._lpf(k, g[::-1])[::-1]
 
     def _raw(self, z):
         q = (z * z.conj()).real
@@ -108,7 +123,7 @@ class Feat:
             p = shift(z, m) * z.conj()
             cols += [p.real, p.imag]
         for k in self.kern:
-            cols.append(fftconvolve(q, k)[: len(z)])
+            cols.append(self._lpf(k, q))
         return np.stack(cols, 1), a
 
     def fit_scale(self, z):
@@ -139,7 +154,7 @@ class Feat:
             i += 2
         for k in self.kern:
             gs = gF[:, i]
-            gq += fftconvolve(gs[::-1], k)[: len(z)][::-1]   # adjoint of causal FIR
+            gq += self._lpf_adj(k, gs)
             i += 1
         return g + ga * z / a + 2 * gq * z
 
@@ -152,9 +167,10 @@ def lagmat(z, L):
 class Surrogate:
     """Differentiable PA model:  y = sum_l h_l z[n-l]  +  z[n] * w(Feat(z))."""
 
-    def __init__(self, rng, L=5, amp=range(0, 6), prod=range(1, 6), lpf_taus=(30, 150), hidden=(64, 64)):
+    def __init__(self, rng, L=5, amp=range(0, 6), prod=range(1, 6), lpf_taus=(30, 150), hidden=(64, 64),
+                 lpf_len=None):
         self.L = L
-        self.feat = Feat(amp, prod, lpf_taus)
+        self.feat = Feat(amp, prod, lpf_taus, lpf_len)
         self.mlp = MLP([self.feat.D, *hidden, 2], rng, out_scale=0.1)
         self.h = np.zeros(L + 1, complex)
 
@@ -211,14 +227,14 @@ class GMPNNDPD:
     so first-order optimisation is well conditioned; the effective c is used at run time."""
 
     def __init__(self, gmp, c0, x_train, rng, use_nn=True, amp=range(-2, 5), prod=(-2, -1, 1, 2, 3, 4),
-                 lpf_taus=(30, 150), hidden=(24, 24)):
+                 lpf_taus=(30, 150), hidden=(24, 24), lpf_len=None):
         self.gmp, self.use_nn = gmp, use_nn
         Phi = gmp.basis(x_train)
         nrm = np.sqrt(len(x_train))
         Q, R = qr(Phi, mode="economic")
         self.R = R / nrm                                  # Phi = (Q*nrm) @ (R/nrm)
         self.d = self.R @ c0
-        self.feat = Feat(amp, prod, lpf_taus)
+        self.feat = Feat(amp, prod, lpf_taus, lpf_len)
         self.feat.fit_scale(x_train)
         self.mlp = MLP([self.feat.D, *hidden, 2], rng, out_scale=0.01)
 
